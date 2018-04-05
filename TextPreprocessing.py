@@ -86,9 +86,16 @@ class TextPreprocessing:
         for sentence in sentence_list:
             result.append(preprocess_sentence(sentence))
         return result
- 
+    
+    '''
+    Выполнить предобработку корпуса предложений
+    '''
+    def list_to_text(self, sentence_list: list) -> str:
+        return ' '.join(word for word in sentence_list)
+
+    
 if __name__ == "__main__":
     p = TextPreprocessing()
     print(p.preprocess_sentence("!@#$%^&*().,/<>\{}[]"))
     
-                                
+
