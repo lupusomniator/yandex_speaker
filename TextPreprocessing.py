@@ -61,8 +61,34 @@ class TextPreprocessing:
                 continue
             # Находим все возможные варианты разбора слова    
             forms = self.morph.parse(word)
-            #print(forms[0].method_stack)
-            #print(forms)
+            try:
+                # Выбираем наиболее вероятный вариант
+                form = max(forms, key=lambda x: x.score)
+            except Exception:
+                # Если разбор слова не удался, просто оставляем его как есть
+                form = forms[0]
+            # Если не удалось определить тип слова или нормальная форма слова находится в стоп-словах       
+            if not ('Name' in form.tag or 'UNKN' in form.tag or 'LATN' in form.tag or form.normal_form in self.stop_words):
+                # RusVectories требует отсутствия букв ё
+                #if form.normal_form.replace('ё', 'е') + self.translate_tags(form.tag.POS) in word_vec:
+                normalized.append(form.normal_form.replace('ё', 'е'))
+        # else:
+        #     normalized.append(word)
+        return normalized
+    
+    def preprocess_sentense_tagged(self, sentence: str)->list:
+        normalized = []
+        # Удаляем всю пунктуацию в предложении и
+        # объеденяем слова в предложении в список
+        sentence_list = self.remove_punctuation(sentence).split()
+        
+        # Для каждого слова в предложении
+        for word in sentence_list:
+            # Проверка на отсутствие слова в списке стоп-слов
+            if word in self.stop_words:
+                continue
+            # Находим все возможные варианты разбора слова    
+            forms = self.morph.parse(word)
             try:
                 # Выбираем наиболее вероятный вариант
                 form = max(forms, key=lambda x: x.score)
@@ -77,14 +103,20 @@ class TextPreprocessing:
         # else:
         #     normalized.append(word)
         return normalized
-    
+        
+        
+        
     '''
     Выполнить предобработку корпуса предложений
     '''
-    def preprocess_text(self, sentence_list: list) -> list:
+    def preprocess_text(self, sentence_list: list, tagged: bool = True) -> list:
         result = []
-        for sentence in sentence_list:
-            result.append(preprocess_sentence(sentence))
+        if tagged:
+            for sentence in sentence_list:
+                result.append(preprocess_sentence_tagged(sentence))
+        else:    
+            for sentence in sentence_list:
+                result.append(preprocess_sentence(sentence))
         return result
     
     '''
