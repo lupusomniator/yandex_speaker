@@ -19,7 +19,7 @@ class Similarity:
                     np.linalg.norm(svec1) * np.linalg.norm(svec2))
         try:
             if math.isnan(cosine_similarity):
-                cosine_similarity = 0
+                cosine_similarity = -1
         except:
             cosine_similarity = 0
             

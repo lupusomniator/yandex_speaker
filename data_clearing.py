@@ -8,7 +8,7 @@
 
 import pandas as pd
 import pymorphy2
-from  text_preprop import TextPreprocessor
+from  text_preprocess2 import TextPreprocessor
 import pickle
 from  profiler import Profiler
 
@@ -19,6 +19,10 @@ df = pd.read_csv('train.tsv',
                          names=['context_id', 'context_2', 'context_1', 'context_0', 'reply_id', 'reply',
                                 'label', 'confidence'],
                         header=None, sep='\t')
+
+#%%
+
+
 
 
 # In[14]:
@@ -70,11 +74,8 @@ with Profiler():
         data_sparced_clear.append(df[cont_indexes[col_amount]])
         for i in range(col_amount+1):
             # Текст с тегами
-            prep_col = df_part[col_name[i]].map(tp.preprocess_sentense_tagged)
+            prep_col = df_part[col_name[i]].map(tp.preprocess_sentence)
             data_sparced[col_amount][col_name[i]] = prep_col
-            # Без тегов
-            #prep_col_clear = df_part[col_name[i]].map(tp.preprocess_sentence)
-            #data_sparced[col_amount][col_name[i]] = prep_col_clear
             
         col_amount+=1
 
