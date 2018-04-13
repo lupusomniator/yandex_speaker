@@ -132,7 +132,7 @@ class Core:
     def rerange_replies(self,bag: pd.DataFrame, find_answer_result: list, bgn)-> list:
             # Получаем ответы для лучшего высказывания из обучающей выборки
             if find_answer_result == []:
-                replies_conf = {'':-2}
+                replies_conf = {'':0}
                 replies_form = {}
             else:
                 replies_conf = bgn(find_answer_result)
@@ -161,10 +161,9 @@ class Core:
             goodness = []
             for quest_reply in conf_matrix:
                 # Сортируем по значению похожести входного ответа на ответы из обучающей выборки
-                quest_reply_args = argsortDic(quest_reply)
-                quest_reply_args.reverse()
+                quest_reply_args = max(quest_reply, key=lambda k: quest_reply[k])
                 # Выбираем наиболее подходящий и "забираем" его оценку
-                goodness.append(replies_conf[quest_reply_args[0]])
+                goodness.append(replies_conf[quest_reply_args])
                 i+=1
             rightRowsNums = argsortList(goodness)    
              

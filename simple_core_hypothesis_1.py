@@ -66,8 +66,8 @@ class Hipothesis1(Core):
             print("%i-ый фолд"%i)
             self.data = all_data[all_data['context_id'].isin(idies[train_index])]
             test = all_data[all_data['context_id'].isin(idies[test_index])]
-            self.alpha = 0
-            self.beta = 0
+            self.alpha = alpha
+            self.beta = beta
             self.do_test(test, "cross_val.txt", bgn = self.bad_good_neutral_hyp1)
             sorted_repl = pd.read_csv('cross_val.txt',
                                       names=['context_id',  'reply_id'],
