@@ -15,21 +15,9 @@ from  profiler import Profiler
 # In[13]:
 
 
-df = pd.read_csv('train.tsv',
-                         names=['context_id', 'context_2', 'context_1', 'context_0', 'reply_id', 'reply',
-                                'label', 'confidence'],
+df = pd.read_csv('public.tsv',
+                         names=['context_id', 'context_2', 'context_1', 'context_0', 'reply_id', 'reply'],
                         header=None, sep='\t')
-
-#%%
-
-
-
-
-# In[14]:
-
-
-
-df.head()
 
 
 # In[18]:
@@ -76,6 +64,8 @@ with Profiler():
             # Текст с тегами
             prep_col = df_part[col_name[i]].map(tp.preprocess_sentence)
             data_sparced[col_amount][col_name[i]] = prep_col
+        prep_col = df_part['reply'].map(tp.preprocess_sentence)
+        data_sparced[col_amount]['reply'] = prep_col
             
         col_amount+=1
 
@@ -87,7 +77,7 @@ with Profiler():
 #        pickle.dump(data_sparced, file)
         
 with Profiler():
-    with open("canonized_tagged.pickle",'wb') as file:
+    with open("test_canonized.pickle",'wb') as file:
         pickle.dump(data_sparced, file)
 '''
 Пример загрузки файла из пикла

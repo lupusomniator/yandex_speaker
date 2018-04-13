@@ -18,40 +18,39 @@ class Core:
     tovec = 0
     data = 0
     model = 0
-    def __init__(self, model_path: str,
-                 data_onec: pd.DataFrame,
-                 data_twoc: pd.DataFrame,
-                 data_threc: pd.DataFrame):
-        self.data = {1:data_onec,2:data_twoc,3:data_threc}
+    def __init__(self, model_path: str, data_heh):
         self.load_model(model_path)
         self.sim = Similarity()
         self.text_prep = TextPreprocessor()
         self.tovec = Vectorizer(self.model)
-        self.prepare_data()
+        self.data = self.prepare_data(data_heh)
         
-    def prepare_data(self):
+    def prepare_data(self,data):
 #        self.data['context_0'] = self.data['context_0'].map(self.tovec.find_sentence_vector)
         print("Векторизация исходного текста...")
         # Векторизация одноконтекстных элементов выборки
-        self.data[1]['sum_words'] = self.data[1]['context_0'] 
-        self.data[1]['vec_words'] = self.data[1]['context_0'].map(self.tovec.find_sentence_vector)
+        data[0]['sum_words'] =  data[0]['context_0'] 
+        data[0]['vec_words'] =  data[0]['context_0'].map(self.tovec.find_sentence_vector)
+        data[0]['reply_vec'] =  data[0]['reply'].map(self.tovec.find_sentence_vector)
         
         # Векторизация двухконтекстных элементов выборки
-        self.data[2]['sum_words'] = self.data[2]['context_0'] +\
-                                    self.data[2]['context_1']
-        self.data[2]['vec_words'] = self.data[2]['sum_words'].map(self.tovec.find_sentence_vector)
+        data[1]['sum_words'] =  data[1]['context_0'] +\
+                                data[1]['context_1']
+        data[1]['vec_words'] =  data[1]['sum_words'].map(self.tovec.find_sentence_vector)
+        data[1]['reply_vec'] =  data[1]['reply'].map(self.tovec.find_sentence_vector)
         
         #Векторизация трехконтекстных элементов выборки
-        self.data[3]['sum_words'] = self.data[3]['context_0'] +\
-                                    self.data[3]['context_1'] +\
-                                    self.data[3]['context_2']
-        self.data[3]['vec_words'] = self.data[3]['sum_words'].map(self.tovec.find_sentence_vector)
+        data[2]['sum_words'] =  data[2]['context_0'] +\
+                                data[2]['context_1'] +\
+                                data[2]['context_2']
+        data[2]['vec_words'] =  data[2]['sum_words'].map(self.tovec.find_sentence_vector)
+        data[2]['reply_vec'] =  data[2]['reply'].map(self.tovec.find_sentence_vector)
         
-        self.data = pd.concat([self.data[1],
-                               self.data[2],
-                               self.data[3]])
-        print(self.data)
+        data = pd.concat([data[0],
+                          data[1],
+                          data[2]])
         print("Векторизация текста выполнена!")
+        return data
         
     def load_model(self, model_path:str)-> bool:
         self.model_exist = True
@@ -94,6 +93,33 @@ class Core:
 #        print(max_cos)
         return best_question
     
+    def find_answer(self, sent_vec , nothing:int = 0):
+        max_cos = -2
+        best_question = []
+        i = 0
+        if np.linalg.norm(sent_vec) == 0:
+            return []
+#        set_progress(0)
+        for row in self.data.itertuples(index=True, name='Pandas'):
+            vec_train = getattr(row, 'vec_words')
+            cos_now = self.sim.CosineSimilarity(vec_train, sent_vec)
+            if cos_now > max_cos:
+                max_cos = cos_now
+                best_question = []
+            if cos_now == max_cos:
+                best_question.append({'quest':getattr(row, 'sum_words'),'reply':getattr(row,'reply'),'reply_vec':getattr(row,'reply_vec'),'label':getattr(row,'label'),'confidence':getattr(row,'confidence')})
+            i+=1
+#        print(max_cos)
+        return best_question
+    
+    def bad_good_neutral(find_answer_result):
+        return {        
+                id(d['reply']):d['confidence'] 
+                if d['label'] == 'good'
+                else (1 - float(d['confidence'])) 
+                for d in find_answer_result
+                }
+        
     '''
     Назначение:
         Сортирует ответные реплики по убыванию полезности
@@ -103,30 +129,18 @@ class Core:
     Результат:
         Список отсортированных reply_id
     '''
-    def rerange_replies(self,bag: pd.DataFrame, find_answer_result: list)-> list:
+    def rerange_replies(self,bag: pd.DataFrame, find_answer_result: list, bgn)-> list:
             # Получаем ответы для лучшего высказывания из обучающей выборки
             if find_answer_result == []:
-                replies_conf = {'':0}
+                replies_conf = {'':-2}
                 replies_form = {}
             else:
-                replies_conf = { 
-                        d['reply']:d['confidence'] 
-                        if d['label'] == 'good'
-                        else (1 - float(d['confidence'])) 
-                        for d in find_answer_result
-                       }
+                replies_conf = bgn(find_answer_result)
                 replies_form = { 
-                        d['reply']: self.tovec.find_sentence_vector(
-                                        self.text_prep.preprocess_sentence(
-                                                d['reply']
-                                        )
-                                    )
+                        id(d['reply']): d['reply_vec']
                         for d in find_answer_result
                        }
             result = []
-            
-            bag['reply_vec'] = bag['reply'].map(self.text_prep.preprocess_sentence)
-            bag['reply_vec'] = bag['reply_vec'].map(self.tovec.find_sentence_vector)
             
             conf_matrix = []
             i=0
@@ -161,9 +175,8 @@ class Core:
     записывает в файл filename результаты тестирования
     (отранжированные ответы)
     '''    
-    def do_test(self, test: pd.DataFrame, filename: str = "test_result.txt") -> None:
+    def do_test(self, test: pd.DataFrame, filename: str = "test_result.txt", bgn = bad_good_neutral) -> None:
         print("Производится решение public.tsv...")
-        cont_names_set = ['context_2','context_1','context_0']
         idies = sorted(list(set(test['context_id'])))
         lenid = len(idies)
         result_file = open(filename,"w")
@@ -173,19 +186,13 @@ class Core:
             # Выделяем все строчки с нужным id
             bag = test[test['context_id'] == idd]
             # Определяем количество контекстов
-            nan_cols = set(bag.columns[bag.isna().any()].tolist())
-            # Производим слияние текста:
-            total_text = ''
-            for col in cont_names_set:
-                if not col in nan_cols:
-                    total_text += bag[col].iloc[0]+' '
             # Производим поиск наилучшего известного примера
-            best_quest = self.find_answer(total_text)
+            best_quest = self.find_answer(bag['vec_words'].iloc[0],0)
             # Сортируем имеющиеся ответы
-            result = self.rerange_replies(bag, best_quest)
+            result = self.rerange_replies(bag, best_quest, bgn)
             # Выводим
             for reply_id in result:
-                result_file.write("%i %i\n"%(idd,reply_id))
+                result_file.write("%i\t%i\n"%(idd,reply_id))
             if i%90==0:
                 set_progress(i/lenid)
             i+=1
@@ -195,14 +202,15 @@ class Core:
         
     
 #%%
-with open("canonized_tagged.pickle",'rb') as file:
-    data = pickle.load(file)
-core = Core("ruwikiruscorpora_upos_skipgram_300_2_2018.vec",data[0],data[1],data[2])
+if __name__=="__main__":
+    with open("train_canonized.pickle",'rb') as file:
+        data = pickle.load(file)
+    core = Core("ruwikiruscorpora_upos_skipgram_300_2_2018.vec",data)
 #%%
-test_df = pd.read_csv('public.tsv',
-                         names=['context_id','context_2','context_1','context_0','reply_id','reply'],
-                        header=None, sep='\t')
-core.do_test(test_df)
+    with open("test_canonized.pickle",'rb') as file:
+        testdata = pickle.load(file)
+    testdata = core.prepare_data(testdata)
+    core.do_test(testdata)
 #%%
 def checkout(quest):
     print(quest)
@@ -213,8 +221,4 @@ def checkout(quest):
         print("\tОтвет: ",line['reply'])
         print("\tМетка: ",line['label'])
         print("\tУверенность: ",line['confidence'])
-checkout("Что мне купить в этом магазине?")
-checkout("Нас не пригласили")
-checkout("Мы не знаем, как далеко до него идти")
-checkout("Что мне купить в этом магазине?")
-checkout("Скрой свой запах")
+
