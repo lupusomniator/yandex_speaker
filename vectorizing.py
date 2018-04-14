@@ -1,8 +1,9 @@
 import numpy as np
 import gensim
 class Vectorizer:
-    def __init__(self, model):
+    def __init__(self, model, idf_scores):
         self.model = model
+        self.idf_scores = idf_scores
     '''
     ПРИМЕЧАНИЕ:
         Это на будущее, пока не используется
@@ -41,7 +42,7 @@ class Vectorizer:
         for word in words:
             try:
                 # Загрузка вектора слова из модели
-                word_vec = self.model[word]
+                word_vec = self.model[word]#*self.compute_tf(word, words)*self.idf_dict[word]
                 vectorSet.append(word_vec)
             except:
                 pass

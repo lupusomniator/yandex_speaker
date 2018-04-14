@@ -18,11 +18,11 @@ class Core:
     tovec = 0
     data = 0
     model = 0
-    def __init__(self, model_path: str, data_heh):
+    def __init__(self, model_path: str, data_heh, idf_scores):
         self.load_model(model_path)
         self.sim = Similarity()
         self.text_prep = TextPreprocessor()
-        self.tovec = Vectorizer(self.model)
+        self.tovec = Vectorizer(self.model,idf_scores)
         self.data = self.prepare_data(data_heh)
         
     def prepare_data(self,data):
@@ -72,26 +72,26 @@ class Core:
     
         
     
-    def find_answer(self, sentence: str):
-        word_list = self.text_prep.preprocess_sentence(sentence)
-        sentence_vec = self.tovec.find_sentence_vector(word_list)
-        max_cos = -2
-        best_question = []
-        i = 0
-        if np.linalg.norm(sentence_vec) == 0:
-            return []
-#        set_progress(0)
-        for row in self.data.itertuples(index=True, name='Pandas'):
-            vec_train = getattr(row, 'vec_words')
-            cos_now = self.sim.CosineSimilarity(vec_train, sentence_vec)
-            if cos_now > max_cos:
-                max_cos = cos_now
-                best_question = []
-            if cos_now == max_cos:
-                best_question.append({'quest':getattr(row, 'sum_words'),'reply':getattr(row,'reply'),'label':getattr(row,'label'),'confidence':getattr(row,'confidence')})
-            i+=1
-#        print(max_cos)
-        return best_question
+#    def find_answer(self, sentence: str):
+#        word_list = self.text_prep.preprocess_sentence(sentence)
+#        sentence_vec = self.tovec.find_sentence_vector(word_list)
+#        max_cos = -2
+#        best_question = []
+#        i = 0
+#        if np.linalg.norm(sentence_vec) == 0:
+#            return []
+##        set_progress(0)
+#        for row in self.data.itertuples(index=True, name='Pandas'):
+#            vec_train = getattr(row, 'vec_words')
+#            cos_now = self.sim.CosineSimilarity(vec_train, sentence_vec)
+#            if cos_now > max_cos:
+#                max_cos = cos_now
+#                best_question = []
+#            if cos_now == max_cos:
+#                best_question.append({'quest':getattr(row, 'sum_words'),'reply':getattr(row,'reply'),'label':getattr(row,'label'),'confidence':getattr(row,'confidence')})
+#            i+=1
+##        print(max_cos)
+#        return best_question
     
     def find_answer(self, sent_vec , nothing:int = 0):
         max_cos = -2
@@ -166,8 +166,7 @@ class Core:
                 goodness.append(replies_conf[quest_reply_args])
                 i+=1
             rightRowsNums = argsortList(goodness)    
-             
-            result = [bag.iloc[rrn]['reply_id'] for rrn in rightRowsNums]
+            result = [bag.iloc[rrn]['reply_id'] for rrn in reversed(rightRowsNums)]
             return result
     '''
     Метод выполняет обработку тестового сета и
@@ -175,7 +174,7 @@ class Core:
     (отранжированные ответы)
     '''    
     def do_test(self, test: pd.DataFrame, filename: str = "test_result.txt", bgn = bad_good_neutral) -> None:
-        print("Производится решение public.tsv...")
+        print("Производится решение...")
         idies = sorted(list(set(test['context_id'])))
         lenid = len(idies)
         result_file = open(filename,"w")
@@ -186,7 +185,7 @@ class Core:
             bag = test[test['context_id'] == idd]
             # Определяем количество контекстов
             # Производим поиск наилучшего известного примера
-            best_quest = self.find_answer(bag['vec_words'].iloc[0],0)
+            best_quest = self.find_answer(bag['vec_words'].iloc[0])
             # Сортируем имеющиеся ответы
             result = self.rerange_replies(bag, best_quest, bgn)
             # Выводим
@@ -196,7 +195,6 @@ class Core:
                 set_progress(i/lenid)
             i+=1
         result_file.close()
-        print("Решение найдено!")
         
         
     
@@ -204,7 +202,9 @@ class Core:
 if __name__=="__main__":
     with open("train_canonized.pickle",'rb') as file:
         data = pickle.load(file)
-    core = Core("ruwikiruscorpora_upos_skipgram_300_2_2018.vec",data)
+    with open("idf.pickle",'rb') as file:
+        idf_scr = pickle.load(file)
+    core = Core("ruwikiruscorpora_upos_skipgram_300_2_2018.vec",data,idf_scr)
 #%%
     with open("test_canonized.pickle",'rb') as file:
         testdata = pickle.load(file)

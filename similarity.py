@@ -1,9 +1,9 @@
 import numpy as np
 import math
-
+import warnings
+warnings.filterwarnings("ignore")
 class Similarity:
-    def __init__(self):
-        print('hi')
+
         
     '''
     Задача:
@@ -15,12 +15,8 @@ class Similarity:
         Косинусное расстояние между двумя векторами предложений
     '''
     def CosineSimilarity(self, svec1, svec2) -> float:
-        cosine_similarity = np.dot(svec1, svec2) / (
-                    np.linalg.norm(svec1) * np.linalg.norm(svec2))
-        try:
-            if math.isnan(cosine_similarity):
-                cosine_similarity = -1
-        except:
-            cosine_similarity = 0
-            
+        lng = np.linalg.norm(svec1) * np.linalg.norm(svec2)
+        if lng ==0:
+            return -1
+        cosine_similarity = np.dot(svec1, svec2) / lng            
         return cosine_similarity
